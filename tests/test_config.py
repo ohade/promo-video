@@ -191,3 +191,18 @@ def test_config_placeholder_or_blank_env_key_is_not_a_key(tmp_path, repo_root):
     for value in (_placeholder_value(repo_root), "  "):
         cfg = config.load_config(env={"GEMINI_API_KEY": value}, home=tmp_path / "home", repo_root=tmp_path / "repo")
         assert cfg.key_source == str(local) and cfg.api_key() == key, repr(value)
+
+
+@pytest.mark.parametrize("value", ["0", "false", "[]", "1", "true", '["x"]'])
+def test_config_non_string_key_is_no_key(tmp_path, value):
+    from conftest import fake_key
+    key = fake_key()
+    home, repo = tmp_path / "home", tmp_path / "repo"
+    _write(home / ".config" / "promo-video" / "config.toml", f"gemini_api_key = {value}\n")
+    cfg = config.load_config(env={}, home=home, repo_root=repo)
+    code, lines = config.check_report(cfg, which=_any_tool)
+    assert code == 1 and any(x.startswith("FAIL key: GEMINI_API_KEY") for x in lines), lines
+    assert cfg.key_source is None
+    local = _write(repo / "config.local.toml", f'gemini_api_key = "{key}"\n')
+    cfg = config.load_config(env={}, home=home, repo_root=repo)
+    assert cfg.key_source == str(local) and cfg.api_key() == key

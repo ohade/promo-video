@@ -68,10 +68,10 @@ def _read_toml(path):
 
 
 def _is_real_key(value):
-    """False for a missing, empty or blank value and for the example placeholder."""
-    if value is None:
+    """False for a missing, non-string (0, false, [] in TOML), empty or blank value and for the example placeholder."""
+    if not isinstance(value, str):
         return False
-    text = str(value).strip()
+    text = value.strip()
     return bool(text) and text != PLACEHOLDER_KEY
 
 

@@ -1,7 +1,10 @@
 """Mix narration, music and procedural SFX for a resolved edit list; duck music and SFX under the voice;
 two-pass loudnorm to TARGET_LUFS with a limiter; keep the encoded true peak at or under TRUE_PEAK_CEILING_DB."""
+import contextlib
 import json
+import os
 import subprocess
+from pathlib import Path
 
 from .common import SR
 
@@ -124,14 +127,43 @@ def _mux(video, wav, out_mp4, total, af):
                     "-t", f"{total:.4f}", "-movflags", "+faststart", str(out_mp4)], check=True)
 
 
-def loudnorm_mux(video, wav, out_mp4, total):
-    probe = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav), "-af", probe_filter(), "-f", "null",
-                            "-"], capture_output=True, text=True).stderr
-    measured = json.loads(probe[probe.rindex("{"):probe.rindex("}") + 1])
-    if measured.get("input_i") in ("-inf", "inf"):           # silent mix: nothing to normalise
-        _mux(video, wav, out_mp4, total, f"aresample={SR}")
-        return
-    _mux(video, wav, out_mp4, total, apply_filter(measured, LIMITER_LIMIT))
-    lower = second_pass_limit(true_peak_db(out_mp4))
-    if lower is not None:
-        _mux(video, wav, out_mp4, total, apply_filter(measured, lower))
+class TruePeakOverCeiling(ValueError):
+    """The encoded export still peaks above TRUE_PEAK_CEILING_DB after every limiter retry; no file is left behind."""
+
+    def __init__(self, peak_db, ceiling_db, muxes):
+        super().__init__(f"encoded true peak {peak_db:.2f} dBTP is above the {ceiling_db:.1f} dBTP ceiling after "
+                         f"{muxes} limiter passes; the export was removed")
+        self.peak_db, self.ceiling_db = peak_db, ceiling_db
+
+
+def _limited_mux(video, wav, part, total, measured, max_retries):
+    """Mux into part and measure it, lowering the limiter each pass, until it is at or under the ceiling."""
+    limit = LIMITER_LIMIT
+    for _ in range(1 + max_retries):                         # every mux is measured, the retries included
+        _mux(video, wav, part, total, apply_filter(measured, limit))
+        peak = true_peak_db(part)
+        lower = second_pass_limit(peak, limit)
+        if lower is None:
+            return
+        limit = lower
+    raise TruePeakOverCeiling(peak, TRUE_PEAK_CEILING_DB, 1 + max_retries)
+
+
+def loudnorm_mux(video, wav, out_mp4, total, max_retries=3):
+    """Every mux writes a sibling temp file; only a file at or under the ceiling is moved to out_mp4. After any failure
+    out_mp4 does not exist (an earlier run's export included) and the original error propagates."""
+    out = Path(out_mp4)
+    part = out.with_name(f".{out.stem}.partial{out.suffix}")
+    out.unlink(missing_ok=True)
+    try:
+        probe = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav), "-af", probe_filter(), "-f",
+                                "null", "-"], capture_output=True, text=True).stderr
+        measured = json.loads(probe[probe.rindex("{"):probe.rindex("}") + 1])
+        if measured.get("input_i") in ("-inf", "inf"):       # silent mix: nothing to normalise
+            _mux(video, wav, part, total, f"aresample={SR}")
+        else:
+            _limited_mux(video, wav, part, total, measured, max_retries)
+        os.replace(part, out)
+    finally:
+        with contextlib.suppress(OSError):                   # cleanup must not mask the error that got us here
+            part.unlink(missing_ok=True)

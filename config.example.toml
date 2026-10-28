@@ -1,8 +1,10 @@
-# promo-video settings. Copy to ONE of these places (first existing file wins) and fill in your values:
+# promo-video settings. Copy to ONE of these places and fill in your values:
 #   $PROMO_VIDEO_CONFIG (if set, the only file read)
 #   ~/.config/promo-video/config.toml
 #   <repo>/config.local.toml   (gitignored)
-# The environment variable GEMINI_API_KEY, when set, always wins over the file. Keep the file private: chmod 600.
+# The key comes from the first place with a real value (an empty value or the placeholder below counts as none);
+# every other setting comes from the first file that exists. A GEMINI_API_KEY environment variable that is not
+# empty or the placeholder wins over the files. Keep the file private: chmod 600.
 
 # Google AI Studio key used for Gemini TTS (narration) and Lyria (music). Paid requests.
 gemini_api_key = "YOUR-GOOGLE-AI-STUDIO-KEY"
