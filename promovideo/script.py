@@ -39,6 +39,12 @@ ORDINAL_SMALL = {w: i for i, w in enumerate(
 ORDINAL_TENS = {w[:-1] + "ieth": n for w, n in TENS.items()}
 
 
+def _unit_ordinal(tok):
+    """1-9 for a unit ordinal word ("first" ... "ninth") that completes a tens number, else 0."""
+    n = ORDINAL_SMALL.get(tok, 0)
+    return n if n < 10 else 0
+
+
 ORDINAL_SUFFIX = {1: "st", 2: "nd", 3: "rd"}
 
 
@@ -62,8 +68,8 @@ def _below_hundred(toks, i):
     nxt = toks[i + 1] if i + 1 < len(toks) else None
     if nxt in UNITS[1:]:
         return TENS[w] + SMALL[nxt], False, i + 2
-    if nxt in ORDINAL_SMALL and 0 < ORDINAL_SMALL[nxt] < 10:
-        return TENS[w] + ORDINAL_SMALL[nxt], True, i + 2
+    if _unit_ordinal(nxt):
+        return TENS[w] + _unit_ordinal(nxt), True, i + 2
     return TENS[w], False, i + 1
 
 
@@ -107,7 +113,8 @@ def _number(toks, i):
 # Letters the raw text writes with dots, hyphens or slashes between them ("X.Y.360", "T.V.", "A/B", "X-Y-360"), plus at
 # most one number written directly after them; this is how Whisper spells an acronym.
 MARKED_LETTERS = re.compile(r"(?<![A-Za-z0-9])([A-Za-z](?:[./-][A-Za-z])+)(?![A-Za-z])(?:[./-]?(\d+)(?![A-Za-z0-9]))?")
-SPAN_BREAK = re.compile(r"[.,;:!?]")
+SENTENCE_BREAK = re.compile(r"[.;:!?]")
+COMMA = ","
 LONE_WORD_LETTERS = ("a", "i")
 
 
@@ -119,13 +126,43 @@ def _single_letter(tok):
     return len(tok) == 1 and tok.isalpha()
 
 
+# A digit tens number (20-90, or a hundreds number ending in 20-90 such as 120) that a unit ordinal word completes.
+DIGIT_TENS = re.compile(r"[1-9]?[2-9]0")
+
+
+def _digit_tens_ordinal(toks, i):
+    """(compound ordinal, next index) for a digit tens token followed by a unit ordinal word ("30 second" -> "32nd",
+    as "thirty second" gives), or None."""
+    nxt = toks[i + 1] if i + 1 < len(toks) else None
+    if DIGIT_TENS.fullmatch(toks[i]) and _unit_ordinal(nxt):
+        return _ordinal(int(toks[i]) + _unit_ordinal(nxt)), i + 2
+    return None
+
+
 def _fold_numbers(toks):
     out, i = [], 0
     while i < len(toks):
-        num = _number(toks, i)
+        num = _digit_tens_ordinal(toks, i) or _number(toks, i)
         out.append(num[0] if num else toks[i])
         i = num[1] if num else i + 1
     return out
+
+
+def _clause_tokens(clause):
+    """Tokens of a clause with numbers folded inside each comma-separated span and a COMMA token between the spans."""
+    toks = []
+    for span in clause.split(COMMA):
+        toks.extend(_fold_numbers(words(span)) + [COMMA])
+    return toks[:-1]
+
+
+def _between_letters(toks, k):
+    return 0 < k < len(toks) - 1 and _single_letter(toks[k - 1]) and _single_letter(toks[k + 1])
+
+
+def _drop_commas_in_letter_lists(toks):
+    """The tokens without each COMMA that stands between two single letters ("S, M" reads as "S M")."""
+    return [tok for k, tok in enumerate(toks) if tok != COMMA or not _between_letters(toks, k)]
 
 
 def _letter_run(toks, i):
@@ -158,12 +195,15 @@ def _join_letter_runs(toks):
 
 
 def match_words(s):
-    """words(s) with spoken numbers as digits ("twenty-eighth" -> "28th") and spelled letter runs joined
-    ("X.Y.360" -> "xy360"), so a transcript that only writes them differently matches. Numbers and space-separated
-    letters are folded only inside a span with no punctuation between the words. Used by match_ratio only."""
+    """words(s) with spoken numbers as digits ("twenty-eighth" -> "28th", "30 second" -> "32nd") and spelled letter
+    runs joined ("X.Y.360" -> "xy360"), so a transcript that only writes them differently matches. Numbers are folded
+    only inside a span with no punctuation between the words. Space-separated letters join across commas ("S, M" and
+    "S M" both give "sm"), but . ; : ! ? end a run, and a run takes a number only when no punctuation comes before
+    it. Used by match_ratio only."""
     out = []
-    for span in SPAN_BREAK.split(_join_marked_letters(s)):
-        out.extend(_join_letter_runs(_fold_numbers(words(span))))
+    for clause in SENTENCE_BREAK.split(_join_marked_letters(s)):
+        toks = _join_letter_runs(_drop_commas_in_letter_lists(_clause_tokens(clause)))
+        out.extend(tok for tok in toks if tok != COMMA)
     return out
 
 

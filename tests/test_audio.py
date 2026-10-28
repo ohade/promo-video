@@ -161,3 +161,19 @@ def test_audio_true_peak_error_is_one_cli_line(monkeypatch, tmp_path, capsys):
     assert code == 2, code
     assert lines == ["error: encoded true peak -1.04 dBTP is above the -1.3 dBTP ceiling after 4 limiter passes; "
                      "the export was removed"], lines
+
+
+def test_audio_loudnorm_mux_cleanup_error_keeps_the_mux_error(monkeypatch, tmp_path, raises):
+    import subprocess
+    from pathlib import Path
+    _, out, _ = _fake_loudnorm(monkeypatch, tmp_path, [-1.5], mux_fails_at=1)
+    real_unlink = Path.unlink
+
+    def unlink(self, missing_ok=False):
+        if self != out:
+            raise OSError("temp file is locked")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    err = raises(Exception, lambda: audio.loudnorm_mux("v.mp4", "m.wav", out, 3.0))
+    assert isinstance(err, subprocess.CalledProcessError), repr(err)

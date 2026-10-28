@@ -127,3 +127,65 @@ def test_script_match_letter_join_keeps_order_and_marks(line, heard):
 
 def test_script_match_one_letter_and_a_number_stay_apart():
     assert script.match_ratio("Plan B 2", "Plan B2") == _plain_ratio("Plan B 2", "Plan B2") < 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("Book a thirty-second spot today.", "Book a 30-second spot today."),
+                                         ("We connect twenty third-party apps for you.",
+                                          "We connect 20 third-party apps for you."),
+                                         ("Run a sixty-second ad on every new channel.",
+                                          "Run a 60-second ad on every new channel."),
+                                         ("We welcomed twenty first-time buyers this week.",
+                                          "We welcomed 20 first-time buyers this week.")])
+def test_script_match_tens_before_an_ordinal_word_equals_digits(line, heard):
+    assert script.match_ratio(line, heard) == 1.0
+
+
+def test_script_match_compound_ordinal_still_checks_its_unit():
+    assert script.match_ratio("Day twenty-eighth now.", "Day 28th now.") == 1.0
+    assert script.match_ratio("Day twenty-seventh now.", "Day 28th now.") < 1.0
+
+
+def test_script_match_letter_list_ignores_punctuation_between_letters():
+    assert script.match_ratio("Sizes S, M and L ship today.", "Sizes S M and L ship today.") == 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("Wear a T-shirt today.", "Wear a T shirt today."),
+                                         ("Buy XY360 today.", "Buy X.Y360 today.")])
+def test_script_match_marked_letter_edges(line, heard):
+    assert script.match_ratio(line, heard) == 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("Book the X Y thirty-second spot.", "Book the X Y 30-second spot."),
+                                         ("Book the X Y thirty-second spot.", "Book the XY 30-second spot."),
+                                         ("Run a one hundred thirty-second test.", "Run a 130-second test.")])
+def test_script_match_digit_tens_and_an_ordinal_word_fold_together(line, heard):
+    assert script.match_ratio(line, heard) == 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("On the twenty-first we ship.", "On the 20 1st we ship."),
+                                         ("We ship on the twenty-eighth.", "We ship on the 20. 8th."),
+                                         ("The twenty-third floor is open.", "The 20, 3rd floor is open."),
+                                         ("Day one hundred twenty-eighth.", "Day 120. 8th."),
+                                         ("Day one hundred twenty-first.", "Day 120 1st."),
+                                         ("We welcomed twenty-one first-time buyers.", "We welcomed 21st time buyers."),
+                                         ("Run a sixty-second ad.", "Run a 60 seconds ad."),
+                                         ("The twenty-second of May.", "The 20 2 of May.")])
+def test_script_match_split_digit_ordinal_still_differs(line, heard):
+    assert script.match_ratio(line, heard) < 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("We built X Y. Three teams use it.", "We built XY. Three teams use it."),
+                                         ("Rooms X Y, 2 left.", "Rooms XY, 2 left."),
+                                         ("Rooms X Y, 2 left.", "Rooms X.Y., 2 left."),
+                                         ("Pick option C. T V spots ship today.", "Pick option C. TV spots ship today."),
+                                         ("Choose plan B. X Y ships today.", "Choose plan B. XY ships today."),
+                                         ("Sizes S, M, L. Two left.", "Sizes S, M, L. 2 left.")])
+def test_script_match_letter_run_joins_across_commas_only(line, heard):
+    assert script.match_ratio(line, heard) == 1.0
+
+
+@pytest.mark.parametrize("line, heard", [("Sizes S, M, L ship.", "Sizes S, L ship."),
+                                         ("Plan X Y, 3 seats.", "Plan X Y, 30 seats."),
+                                         ("Sizes S, M and L ship today.", "Sizes M, S and L ship today.")])
+def test_script_match_letter_list_across_commas_still_checks_letters(line, heard):
+    assert script.match_ratio(line, heard) < 1.0
