@@ -1,0 +1,29 @@
+# Bay: fast, loud blockbuster grammar. Hard cuts every 1.5-4 s, whip pans, slam text, impacts, teal-orange graphics.
+name = "bay"
+description = "Fast, loud blockbuster: hard cuts every 1.5-4 s, whip pans, slam text, impacts, risers."
+max_shot_s = 4.0
+
+[voice]
+model = "gemini-3.8-flash-tts"
+name = "Fenrir"
+profile = "Narrator for a high-energy blockbuster-style trailer for a developer tool."
+notes = "Style: energetic, grinning, punchy but natural and conversational, a person, not an announcer.\nPace: brisk."
+
+[music]
+model = "lyria-3.5"
+suffix = " Instrumental only, no vocals, no spoken words."
+
+[music.cues]
+open = "Dark cinematic tension opener: a slow sub-bass heartbeat, glitchy pulsing synth stabs and a rising metallic riser for twelve seconds, then one enormous brass-and-drum impact, then a short heroic hybrid orchestral statement with pounding drums."
+drive = "High-energy hybrid orchestral action groove at 125 BPM: taiko and big drum kit, driving staccato strings, chugging distorted guitars and brass stabs on the downbeats, constant forward momentum, bright and exciting, no breakdown."
+tension = "Suspense build for a countdown: pulsing low strings and an accelerating drum pattern with rising risers, getting tighter and louder, a sudden cut to silence, then a massive low brass blast and a triumphant full orchestra with drums."
+outro = "Triumphant heroic finale: full brass fanfare over pounding drums and choir-like synth pads, building to a last huge hit with a long low tail."
+
+[whisper]
+min_match = 0.90
+tries = 3
+
+[look]
+clock_style = "bay"
+letterbox = 0
+pacing = "Target 2:30-3:00. Open on the problem, name the product, then a three-item agenda. Every shot 1.5-4 s; a whoosh on each whip; a sub hit or impact on each slam; music ducked under the voice."

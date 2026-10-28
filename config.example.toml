@@ -1,0 +1,16 @@
+# promo-video settings. Copy to ONE of these places (first existing file wins) and fill in your values:
+#   $PROMO_VIDEO_CONFIG (if set, the only file read)
+#   ~/.config/promo-video/config.toml
+#   <repo>/config.local.toml   (gitignored)
+# The environment variable GEMINI_API_KEY, when set, always wins over the file. Keep the file private: chmod 600.
+
+# Google AI Studio key used for Gemini TTS (narration) and Lyria (music). Paid requests.
+gemini_api_key = "YOUR-GOOGLE-AI-STUDIO-KEY"
+
+# Optional: an OpenAI-compatible Whisper transcription endpoint (POST multipart, returns {"text": ...}).
+# Leave empty to skip the narration transcription checks (one SKIP line is printed instead).
+whisper_url = ""
+
+# Optional font overrides (any TTF/TTC path); defaults search common macOS and Linux locations.
+# [fonts]
+# cond = "/path/to/a/condensed-bold.ttf"

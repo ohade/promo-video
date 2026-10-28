@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "promo-video"
+version = "0.1.0"
+description = "Turn a project folder (script lines, edit list, footage) into a trailer-style promotional video."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.24", "Pillow>=10.1"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+promo-video = "promovideo.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["promovideo*"]
+
+[tool.setuptools.package-data]
+"promovideo.presets" = ["*.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

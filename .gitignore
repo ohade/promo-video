@@ -1,0 +1,41 @@
+# Local secrets and machine-specific settings: never published.
+config.local.toml
+.public-denylist.local
+*.local.toml
+
+# Python and tooling
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Generated media and project work: a project folder's outputs are never published, wherever the project sits
+out/
+audio/
+material/
+footage/
+*.srt
+*.sheet.png
+*.ogg
+*.wav.try
+promo-video-out/
+work/
+*.work/
+*.mp4
+*.mov
+*.wav
+*.mp3
+*.frames.tsv
+*.edl.json
+.DS_Store
+
+# Editors and local environment files
+.env
+.idea/
+.vscode/

@@ -1,0 +1,28 @@
+# Nolan: slow, cerebral, building. Letterbox, long holds and slow push-ins, intertitles, a ticking pulse that rises.
+name = "nolan"
+description = "Slow, cerebral, building: letterbox, slow push-ins, intertitles, a ticking pulse that keeps rising."
+max_shot_s = 10.0
+
+[voice]
+model = "gemini-3.8-flash-tts"
+name = "Algenib"
+profile = "Narrator for a cerebral, slow-burn film trailer about memory and time."
+notes = "Style: low, calm, measured, quietly intense; intimate, close to the microphone.\nPace: slow, with deliberate pauses."
+
+[music]
+model = "lyria-3.5"
+suffix = " Instrumental only, no vocals, no spoken words."
+
+[music.cues]
+pulse = "Minimalist cinematic underscore at 60 BPM: a dry mechanical pocket-watch tick on every beat, a low sustained string drone, sparse soft piano notes, cold and patient, slowly growing in weight."
+rise = "Relentless tension build: layered strings and synths that seem to rise in pitch forever, an accelerating ticking pulse, deep low brass swells, intensity growing continuously for the whole cue without resolving."
+organ = "Solemn awe-inspiring resolution: a slow pipe-organ swell over low strings, wide and spacious, then gradually settling to a quiet sustained chord."
+
+[whisper]
+min_match = 0.90
+tries = 3
+
+[look]
+clock_style = "nolan"
+letterbox = 138
+pacing = "Target 3:30-4:00. A prologue that states the stakes, intertitles for each act (I. II. III.), no shot over 10 s without a camera move or a new element, total silence at the turn."

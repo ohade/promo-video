@@ -1,0 +1,3 @@
+# One narration line per row: <id> "<text>". Narration is generated from exactly these lines.
+h01 "Meet promo-video. Your feature, cut like a trailer."
+h02 "Write the lines, list the shots, and let it render."

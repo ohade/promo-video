@@ -1,0 +1,19 @@
+{
+ "segments": [
+  {"id": "s01", "block": "open", "kind": "black", "dur": 0.6},
+  {"id": "s02", "block": "open", "kind": "graphic", "scene": "title", "dur": 3.4,
+   "params": {"text": "PROMO-VIDEO", "sub": "Lines. Shots. Render."},
+   "overlays": [{"type": "flash", "t0": 0.0, "dur": 0.2}]},
+  {"id": "s03", "block": "how", "kind": "graphic", "scene": "card", "dur": 3.6,
+   "params": {"lines": ["WRITE THE LINES", "LIST THE SHOTS", "RENDER"], "beat": 1.0},
+   "overlays": [{"type": "whip_in", "dur": 0.25}]},
+  {"id": "s04", "block": "end", "kind": "graphic", "scene": "meter", "dur": 2.0,
+   "params": {"label": "DONE", "from": 0.2, "to": 1.0}},
+  {"id": "s05", "block": "end", "kind": "black", "dur": 0.8}
+ ],
+ "audio": {
+  "vo": [{"id": "h01", "start": 0.7}, {"id": "h02", "start": 4.8}],
+  "music": [{"cue": "drive", "start": 0.0, "dur": 10.4, "fade_out": 1.0, "gain_db": -6}],
+  "sfx": [{"name": "sub_hit", "start": 0.6}, {"name": "whoosh", "start": 3.85}, {"name": "impact", "start": 8.0}]
+ }
+}

@@ -1,0 +1,4 @@
+# A two-line example that renders with placeholder audio and no API calls:
+#   bin/promo-video render examples/hello --placeholder-audio --out /tmp/pv-hello.mp4
+title = "Hello, promo-video"
+preset = "bay"

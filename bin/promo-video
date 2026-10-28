@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# promo-video launcher: finds its repo from its own real path (symlinks resolved), then picks a Python that has
+# numpy and Pillow: $PROMO_VIDEO_PYTHON, the repo's .venv, python3, or `uv run` with both as one-off dependencies.
+set -euo pipefail
+
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  case "$src" in /*) ;; *) src="$dir/$src" ;; esac
+done
+repo="$(cd -P "$(dirname "$src")/.." && pwd)"
+export PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}"
+
+has_deps() { "$1" -c 'import numpy, PIL' >/dev/null 2>&1; }
+
+if [ -n "${PROMO_VIDEO_PYTHON:-}" ]; then
+  exec "$PROMO_VIDEO_PYTHON" -m promovideo "$@"
+elif [ -x "$repo/.venv/bin/python" ] && has_deps "$repo/.venv/bin/python"; then
+  exec "$repo/.venv/bin/python" -m promovideo "$@"
+elif command -v python3 >/dev/null 2>&1 && has_deps python3; then
+  exec python3 -m promovideo "$@"
+elif command -v uv >/dev/null 2>&1; then
+  exec uv run --quiet --no-project --with numpy --with pillow python -m promovideo "$@"
+else
+  echo "promo-video: need Python 3.11+ with numpy and Pillow (or uv); see README.md" >&2
+  exit 2
+fi
