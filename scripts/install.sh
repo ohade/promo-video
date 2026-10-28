@@ -125,7 +125,7 @@ add_pkg() { PKGS="${PKGS:+$PKGS }$1"; }
 real_dir() { (cd -P "$1" 2>/dev/null && pwd) || true; }
 
 # Probe the venv from outside the repo, so `promovideo` imports only when it is installed there.
-venv_ready() { (cd / && PYTHONDONTWRITEBYTECODE=1 "$VPY" -c 'import numpy, PIL, promovideo' >/dev/null 2>&1); }
+venv_ready() { (cd / && PYTHONDONTWRITEBYTECODE=1 "$VPY" -c 'import numpy, PIL, filelock, promovideo' >/dev/null 2>&1); }
 
 # ---- plan: look at the machine, change nothing --------------------------------------------------------------------
 OS="$(uname -s)"
@@ -327,7 +327,7 @@ if [ "$DRY_RUN" = 1 ] || ! venv_ready; then
     fi
     run "$VPY" -m pip install --quiet -e "$REPO"
     if [ "$DRY_RUN" = 0 ]; then
-      venv_ready || die "pip finished, but $VPY cannot import numpy, PIL and promovideo"
+      venv_ready || die "pip finished, but $VPY cannot import numpy, PIL, filelock and promovideo"
     fi
   fi
 fi

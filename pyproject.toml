@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Turn a project folder (script lines, edit list, footage) into a trailer-style promotional video."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["numpy>=1.24", "Pillow>=10.1"]
+dependencies = ["numpy>=1.24", "Pillow>=10.1", "filelock>=4.2.4"]
 
 [project.optional-dependencies]
 test = ["pytest>=7"]

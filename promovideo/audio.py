@@ -1,10 +1,15 @@
 """Mix narration, music and procedural SFX for a resolved edit list; duck music and SFX under the voice;
 two-pass loudnorm to TARGET_LUFS with a limiter; keep the encoded true peak at or under TRUE_PEAK_CEILING_DB."""
 import contextlib
+import hashlib
 import json
 import os
 import subprocess
+import tempfile
+import unicodedata
 from pathlib import Path
+
+from filelock import FileLock, Timeout
 
 from .common import SR
 
@@ -149,12 +154,12 @@ def _limited_mux(video, wav, part, total, measured, max_retries):
     raise TruePeakOverCeiling(peak, TRUE_PEAK_CEILING_DB, 1 + max_retries)
 
 
-def loudnorm_mux(video, wav, out_mp4, total, max_retries=3):
-    """Every mux writes a sibling temp file; only a file at or under the ceiling is moved to out_mp4. After any failure
-    out_mp4 does not exist (an earlier run's export included) and the original error propagates."""
-    out = Path(out_mp4)
-    part = out.with_name(f".{out.stem}.partial{out.suffix}")
+def _loudnorm_export(video, wav, out, total, max_retries):
+    """Publish only this invocation's measured bytes; failed attempts remove their own partial."""
     out.unlink(missing_ok=True)
+    descriptor, filename = tempfile.mkstemp(prefix=f".{out.stem}.", suffix=f".partial{out.suffix}", dir=out.parent)
+    os.close(descriptor)
+    part = Path(filename)
     try:
         probe = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(wav), "-af", probe_filter(), "-f",
                                 "null", "-"], capture_output=True, text=True).stderr
@@ -167,3 +172,26 @@ def loudnorm_mux(video, wav, out_mp4, total, max_retries=3):
     finally:
         with contextlib.suppress(OSError):                   # cleanup must not mask the error that got us here
             part.unlink(missing_ok=True)
+
+
+def _export_lock(out):
+    """Reserve case/composition variants together, including before the output exists on an insensitive volume."""
+    destination = unicodedata.normalize("NFD", str(out.parent.resolve() / out.name)).casefold()
+    digest = hashlib.sha256(os.fsencode(destination)).hexdigest()
+    # A fixed system temp root is shared by Mac/Linux callers even when they override TMPDIR.
+    return FileLock(Path("/tmp") / f"promo-video-export-{digest}.lock", timeout=0)
+
+
+def loudnorm_mux(video, wav, out_mp4, total, max_retries=3):
+    """Reject a competing export before touching its output; publish only a measured, invocation-owned partial.
+    Once the lock is acquired, an earlier export is removed and failure propagates without publishing a new one."""
+    out = Path(out_mp4)
+    lock = _export_lock(out)
+    try:
+        lock.acquire()
+    except Timeout as error:
+        raise ValueError("an export is already in progress for this output") from error
+    try:
+        _loudnorm_export(video, wav, out, total, max_retries)
+    finally:
+        lock.release()

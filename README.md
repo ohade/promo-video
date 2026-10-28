@@ -23,6 +23,7 @@ each one comes from:
 | Python | 3.11 (`requires-python` in `pyproject.toml`, the one place it is set; the script reads it) | the first of `python3.13`, `python3.12`, `python3.11`, `python3` on PATH that is new enough, never the macOS system Python 3.9; else `brew install python@3.12` on macOS, or `apt-get install python3 python3-venv` when the distribution's `python3` is new enough (otherwise it stops and names the version it needs) |
 | numpy | 1.24 | `pip install -e .` into `<repo>/.venv` |
 | Pillow | 10.1 | `pip install -e .` into `<repo>/.venv` |
+| filelock | 4.2.4 | `pip install -e .` into `<repo>/.venv` |
 | setuptools (build only) | 68 | fetched by pip while installing |
 | ffmpeg and ffprobe | none pinned (developed with ffmpeg 9.0) | `brew install ffmpeg` / `apt-get install ffmpeg` |
 | tesseract (optional) | none pinned (developed with 5.5) | only with `--with-ocr`: `brew install tesseract` / `apt-get install tesseract-ocr`; without it the OCR privacy scan prints a SKIP line |
@@ -60,8 +61,8 @@ ln -s "$PWD/skills/promo-video" ~/.claude/skills/promo-video
 
 To run the tests, add the test extra: `.venv/bin/pip install -e '.[test]'`.
 
-`bin/promo-video` finds its repo from its own real path and picks a Python with numpy and Pillow:
-`$PROMO_VIDEO_PYTHON`, then `.venv/bin/python`, then `python3`, then `uv run --with numpy --with pillow`. The skill
+`bin/promo-video` finds its repo from its own real path and picks a Python with numpy, Pillow and filelock:
+`$PROMO_VIDEO_PYTHON`, then `.venv/bin/python`, then `python3`, then `uv run --with numpy --with pillow --with 'filelock>=4.2.4'`. The skill
 resolves its symlink the same way to find this repo.
 
 ## Config
@@ -85,6 +86,18 @@ bin/promo-video config check
 `whisper_url` (optional) points to an OpenAI-compatible transcription endpoint. When set, every narration line is
 transcribed and regenerated (up to 3 tries) until it matches the script (word ratio >= 0.90), and `check` matches the
 final mix (>= 0.85). Without it, those checks print one SKIP line each and do not fail.
+
+Matching normalizes spoken numbers up to 999 and spelled letter runs before comparison. A comma can join
+one-letter list items such as `S, M, L`, but cannot join the end of one acronym to the start of another.
+Punctuation keeps number boundaries, except supported word-internal number hyphens and marked acronym spellings.
+Changed numbers, letters and omitted words still reduce the score. Ambiguous leading/trailing `A` or `I` in an
+unmarked letter run stays an ordinary word: forms such as `I B M` versus `IBM` can still fail to match.
+
+An export measures every limiter retry before publishing its result. Simultaneous exports to the same destination
+are rejected before changing that output. Each attempt owns a fresh temporary media file; the native inter-process
+lock uses an opaque filename under the shared Mac/Linux `/tmp`, independent of `TMPDIR` and outside the output folder.
+Names that differ only by case or
+Unicode composition share a reservation, including on case-sensitive filesystems.
 
 ## Usage
 
