@@ -62,3 +62,40 @@ def test_music_failure_keeps_written_cues_in_index(tmp_path, fake_transport):
     index_path = tmp_path / "audio" / "music.json"
     assert index_path.exists()
     assert [e["cue"] for e in json.loads(index_path.read_text())] == ["pulse"]
+
+
+BAD_CUES = ("", "*", "a*", "../x", "a/b", ".x", "a b")
+
+
+@pytest.mark.parametrize("cue", BAD_CUES)
+def test_invalid_cue_rejected_before_glob(monkeypatch, tmp_path, raises, cue):
+    from pathlib import Path
+    globs = []
+    monkeypatch.setattr(Path, "glob", lambda path, pattern: globs.append(pattern) or [])
+    error = raises(Exception, lambda: music.cue_file(tmp_path, cue))
+    assert isinstance(error, ValueError) and repr(cue) in str(error), repr(error)
+    assert globs == [], "invalid name reached glob"
+
+
+@pytest.mark.parametrize("cue", BAD_CUES)
+@pytest.mark.parametrize("only", [None, set()])
+def test_all_selected_cues_validated_before_any_side_effect(monkeypatch, tmp_path, fake_transport, raises, cue, only):
+    from dataclasses import replace
+    preset = replace(load_preset("nolan"), cues={"valid": "first cue", cue: "invalid later cue"})
+    project = tmp_path / "project"
+    transport = fake_transport(audio=b"music", mime="audio/mpeg")
+    monkeypatch.setattr(music, "_duration", lambda path: None)
+    error = raises(Exception, lambda: music.generate(project, preset, "k", transport, only=only))
+    assert transport.calls == [], "a paid request preceded validation of the later cue"
+    assert not project.exists(), "generation wrote files or directories before validating every selected cue"
+    assert isinstance(error, ValueError) and repr(cue) in str(error), repr(error)
+
+
+def test_only_filter_ignores_invalid_excluded_cue(monkeypatch, tmp_path, fake_transport):
+    from dataclasses import replace
+    preset = replace(load_preset("nolan"), cues={"../excluded": "invalid", "Valid-1_ok": "selected"})
+    transport = fake_transport(audio=b"music", mime="audio/mpeg")
+    monkeypatch.setattr(music, "_duration", lambda path: None)
+    assert music.generate(tmp_path, preset, "k", transport, only={"Valid-1_ok"}) == 1
+    assert len(transport.calls) == 1
+    assert music.cue_file(tmp_path, "Valid-1_ok").read_bytes() == b"music"

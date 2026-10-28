@@ -1,5 +1,6 @@
 """Music: one Lyria request per preset cue. Writes <project>/audio/music/<cue>.<ext> and audio/music.json."""
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -8,6 +9,11 @@ from .transport import gemini_url
 from .voice import headers, inline_audio, write_index
 
 EXT = {"audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/wav": "wav", "audio/x-wav": "wav", "audio/ogg": "ogg"}
+
+
+def _validate_cue(cue):
+    if not isinstance(cue, str) or re.fullmatch(r"[A-Za-z0-9_-]+", cue) is None:
+        raise ValueError(f"invalid music cue name {cue!r}; use letters, digits, underscores and hyphens")
 
 
 def music_request(preset, cue):
@@ -28,6 +34,9 @@ def _duration(path):
 
 
 def generate(project_dir, preset, key, transport, only=None, log=print):
+    selected = [cue for cue in preset.cues if not only or cue in only]
+    for cue in selected:
+        _validate_cue(cue)
     project_dir = Path(project_dir)
     out_dir = project_dir / "audio" / "music"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -35,9 +44,7 @@ def generate(project_dir, preset, key, transport, only=None, log=print):
     index = {e["cue"]: e for e in json.loads(index_path.read_text())} if index_path.exists() else {}
     order = list(preset.cues)
     requests = 0
-    for cue in preset.cues:
-        if only and cue not in only:
-            continue
+    for cue in selected:
         url, body = music_request(preset, cue)
         requests += 1
         data, mime = inline_audio(transport.post_json(url, body, headers(key), 300), f"music cue {cue}")
@@ -54,5 +61,6 @@ def generate(project_dir, preset, key, transport, only=None, log=print):
 
 def cue_file(project_dir, cue):
     """Path of a generated cue (any extension) or None."""
+    _validate_cue(cue)
     hits = sorted((Path(project_dir) / "audio" / "music").glob(f"{cue}.*"))
     return hits[0] if hits else None
